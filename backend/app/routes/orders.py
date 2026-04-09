@@ -11,12 +11,14 @@ def get_orders(limit: int = 100, status: Optional[str] = None) -> List[Dict[str,
     Can filter by status.
     """
     try:
-        query = supabase.table("orders").select("*").order("created_at", desc=True).limit(limit)
-        
+        params = {
+            "select": "*",
+            "order": "created_at.desc",
+            "limit": limit
+        }
         if status:
-            query = query.eq("status", status)
+            params["status"] = f"eq.{status}"
             
-        response = query.execute()
-        return response.data
+        return supabase.get("orders", params=params)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Database error: {exc}")

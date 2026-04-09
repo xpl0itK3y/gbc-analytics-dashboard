@@ -16,8 +16,7 @@ def get_stats() -> Dict[str, Any]:
     try:
         # Fetch all necessary fields to calculate stats
         # For larger datasets, this should ideally be done natively in SQL/Supabase aggregations.
-        response = supabase.table("orders").select("total, created_at").execute()
-        orders = response.data
+        orders = supabase.get("orders", params={"select": "total,created_at"})
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Database error: {exc}")
 

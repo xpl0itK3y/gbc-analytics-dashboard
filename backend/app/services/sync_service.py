@@ -1,14 +1,13 @@
 import logging
 import httpx
 from typing import List, Dict, Any
-from supabase import create_client, Client
 from app.utils.config import settings
+from app.services.db import supabase
 
 logger = logging.getLogger(__name__)
 
 class OrderSyncService:
     def __init__(self):
-        self.supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
         self.retailcrm_url = settings.RETAILCRM_BASE_URL
         self.retailcrm_key = settings.RETAILCRM_API_KEY
 
@@ -89,8 +88,8 @@ class OrderSyncService:
 
         try:
             # Using upsert to update existing IDs or insert new ones
-            result = self.supabase.table("orders").upsert(valid_orders).execute()
-            count = len(result.data)
+            result = supabase.upsert("orders", valid_orders)
+            count = len(result)
             logger.info(f"Successfully upserted {count} orders to Supabase.")
             return count
         except Exception as exc:

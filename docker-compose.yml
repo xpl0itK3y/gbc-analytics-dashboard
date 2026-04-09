@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: gbc-backend
+    ports:
+      - "3000:3000"
+    # Mount the local environment file directly inside the container instance
+    env_file:
+      - .env
+    # Optional: Automatically restart the fast API process if it crashes
+    restart: unless-stopped

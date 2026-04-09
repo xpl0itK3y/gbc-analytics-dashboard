@@ -104,8 +104,8 @@ def build_retailcrm_payload(order: dict[str, Any]) -> dict[str, Any]:
         "lastName": order.get("lastName", ""),
         "phone": order.get("phone", ""),
         "email": order.get("email", ""),
-        "orderType": order.get("orderType", "eshop-individual"),
-        "orderMethod": order.get("orderMethod", "shopping-cart"),
+        # "orderType": order.get("orderType", "eshop-individual"),
+        # "orderMethod": order.get("orderMethod", "shopping-cart"),
         "status": order.get("status", "new"),
         "items": [
             {

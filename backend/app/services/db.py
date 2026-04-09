@@ -1,8 +1,29 @@
-from supabase import create_client, Client
+import httpx
 from app.utils.config import settings
 
-def get_supabase_client() -> Client:
-    return create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+class SupabaseRESTClient:
+    def __init__(self):
+        self.url = f"{settings.SUPABASE_URL}/rest/v1"
+        self.headers = {
+            "apikey": settings.SUPABASE_KEY,
+            "Authorization": f"Bearer {settings.SUPABASE_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+    def get(self, table: str, params: dict = None):
+        with httpx.Client() as client:
+            res = client.get(f"{self.url}/{table}", headers=self.headers, params=params)
+            if res.status_code >= 400:
+                raise Exception(f"Failed to fetch {table}: {res.text}")
+            return res.json()
+            
+    def upsert(self, table: str, data: list):
+        headers = self.headers.copy()
+        headers["Prefer"] = "return=representation,resolution=merge-duplicates"
+        with httpx.Client() as client:
+            res = client.post(f"{self.url}/{table}", headers=headers, json=data)
+            if res.status_code >= 400:
+                raise Exception(f"Failed to upsert {table}: {res.text}")
+            return res.json()
 
-# Singleton initialized client for general use in routes
-supabase: Client = get_supabase_client()
+supabase = SupabaseRESTClient()
