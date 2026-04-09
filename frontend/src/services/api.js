@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://YOUR_VPS_IP:4000";
 
 export async function fetchStats() {
   const response = await fetch(`${API_BASE}/stats/`);
