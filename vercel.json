@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "public": true,
+  "name": "gbc-analytics-dashboard",
+  "builds": [
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "dist" }
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "frontend/$1"
+    }
+  ]
+}
