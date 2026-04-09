@@ -1,8 +1,6 @@
-"""
-GBC Analytics Dashboard — FastAPI Backend
-"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.routes import orders, stats
 
 app = FastAPI(
     title="GBC Analytics Dashboard",
@@ -19,6 +17,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include routers
+app.include_router(orders.router)
+app.include_router(stats.router)
 
 @app.get("/health")
 async def health_check():
