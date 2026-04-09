@@ -21,9 +21,9 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Copy the actual application files
 COPY . .
 
-# Expose port 3000 as requested
-EXPOSE 3000
+# Expose port 4000 as requested
+EXPOSE 4000
 
 # Run Uvicorn pointing identically to main.py -> app
 # Binding to 0.0.0.0 is critical so the port is exposed outside the container
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "4000"]
