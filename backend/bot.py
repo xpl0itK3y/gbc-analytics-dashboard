@@ -16,7 +16,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("retailcrm_bot")
 
-STATE_FILE = Path(__file__).resolve().parent / ".bot_state.json"
+STATE_FILE = Path(__file__).resolve().parent / "data" / "bot_state.json"
 POLL_INTERVAL = 60  # seconds between RetailCRM checks
 THRESHOLD_TOTAL = 50000
 
@@ -34,6 +34,7 @@ def get_last_processed_id() -> int:
 def save_last_processed_id(order_id: int):
     """Save the last processed order ID to the state file."""
     try:
+        STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
         with open(STATE_FILE, "w") as f:
             json.dump({"last_order_id": order_id}, f)
     except Exception as e:
@@ -122,6 +123,14 @@ async def ping_bot_task():
     )
     
     last_processed_id = get_last_processed_id()
+    
+    # NEW: If starting for the first time, fetch current max ID to avoid historical spam
+    if last_processed_id == 0:
+        logger.info("First run detected. Initializing state with current latest order to skip history...")
+        _, current_max = await fetch_high_value_orders(0)
+        last_processed_id = current_max
+        save_last_processed_id(last_processed_id)
+
     logger.info(f"Resuming from last_order_id: {last_processed_id}")
 
     try:

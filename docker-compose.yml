@@ -20,6 +20,8 @@ services:
       dockerfile: Dockerfile
     container_name: gbc-bot
     command: ["python", "bot.py"]
+    volumes:
+      - ./backend/data:/app/data
     env_file:
       - .env
     restart: unless-stopped
