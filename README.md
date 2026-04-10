@@ -227,9 +227,3 @@ CHAT_ID=your_chat_id
 ```
 
 ---
-
-<div align="center">
-
-**Проект выполнен в качестве демонстрации навыков AI Tools Specialist**
-
-</div>
