@@ -142,7 +142,7 @@ async def ping_bot_task():
                 number = o["number"]
                 total = "{:,.0f}".format(o["total"])
                 
-                text = f"New high-value order: {number} — {total} ₸"
+                text = f"<b>Новый крупный заказ:</b> #{number} — {total} ₸"
                 
                 try:
                     await bot.send_message(chat_id=settings.TELEGRAM_CHAT_ID, text=text)

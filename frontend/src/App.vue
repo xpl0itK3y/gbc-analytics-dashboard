@@ -1,6 +1,12 @@
 <template>
   <div class="layout-wrapper">
-    <header class="app-header">
+    <header 
+      class="app-header" 
+      :class="{ 
+        'header-hidden': !isHeaderShown,
+        'header-sticky': isHeaderSticky 
+      }"
+    >
       <div class="container">
         <div class="header-brand">
           <h1>Панель GBC ⚡️</h1>
@@ -21,7 +27,7 @@
     </header>
 
     <main class="container main-content">
-      <section class="hero-strip">
+      <section class="hero-strip" ref="heroRef">
         <div class="hero-copy">
           <span class="hero-label">Операционный обзор</span>
           <h2>Продажи, статусы и каналы в одном окне</h2>
@@ -53,7 +59,11 @@
         </div>
       </div>
       <div class="table-section">
-        <OrdersTable :orders="orders" />
+        <OrdersTable 
+          :orders="orders" 
+          :isLoadingMore="isLoadingMore"
+          @load-more="loadMoreOrders"
+        />
       </div>
     </main>
   </div>
@@ -73,7 +83,17 @@ const orders = ref([])
 const summary = ref(null)
 const lastUpdatedAt = ref(null)
 const isRefreshing = ref(false)
+const isLoadingMore = ref(false)
+
+const scrollY = ref(0)
+const isHeroVisible = ref(true)
+const heroRef = ref(null)
+
+const isAtTop = computed(() => scrollY.value < 10)
+const isHeaderShown = computed(() => isAtTop.value)
+const isHeaderSticky = computed(() => true) 
 let refreshTimer = null
+let observer = null
 
 const statusLabel = computed(() => {
   if (!lastUpdatedAt.value) {
@@ -122,9 +142,10 @@ async function refreshDashboard({ silent = false } = {}) {
   }
 
   try {
+    const currentLimit = orders.value.length || 15
     const [statsData, ordersData] = await Promise.all([
       fetchStats(),
-      fetchOrders(15)
+      fetchOrders(currentLimit, 0)
     ])
 
     stats.value = statsData
@@ -138,16 +159,51 @@ async function refreshDashboard({ silent = false } = {}) {
   }
 }
 
+async function loadMoreOrders() {
+  if (isLoadingMore.value) return
+  isLoadingMore.value = true
+  
+  try {
+    const nextOrders = await fetchOrders(15, orders.value.length)
+    if (nextOrders.length > 0) {
+      orders.value = [...orders.value, ...nextOrders]
+    }
+  } catch (e) {
+    console.error('Failed to load more orders:', e)
+  } finally {
+    isLoadingMore.value = false
+  }
+}
+
 onMounted(async () => {
   await refreshDashboard()
   refreshTimer = window.setInterval(() => {
     refreshDashboard({ silent: true })
   }, REFRESH_INTERVAL_MS)
+
+  // Top tracking
+  window.addEventListener('scroll', () => {
+    scrollY.value = window.scrollY
+  }, { passive: true })
+
+  observer = new IntersectionObserver(
+    ([entry]) => {
+      isHeroVisible.value = entry.isIntersecting
+    },
+    { threshold: 0 }
+  )
+
+  if (heroRef.value) {
+    observer.observe(heroRef.value)
+  }
 })
 
 onBeforeUnmount(() => {
   if (refreshTimer) {
     window.clearInterval(refreshTimer)
+  }
+  if (observer) {
+    observer.disconnect()
   }
 })
 </script>
@@ -156,14 +212,32 @@ onBeforeUnmount(() => {
 .layout-wrapper {
   min-height: 100vh;
   background-color: var(--bg-color);
+  padding-top: 86px;
 }
 .app-header {
   background-color: #ffffff;
   border-bottom: 1px solid var(--border-color);
   padding: 1.15rem 0;
-  position: sticky;
+  width: 100%;
+  z-index: 1000;
+  position: absolute;
   top: 0;
-  z-index: 10;
+  left: 0;
+  right: 0;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-header.header-sticky {
+  position: fixed;
+  background-color: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  padding: 0.85rem 0;
+}
+
+.app-header.header-hidden {
+  transform: translateY(-100%);
 }
 .app-header .container {
   display: flex;
@@ -212,7 +286,7 @@ onBeforeUnmount(() => {
   border: 1px solid var(--border-color);
 }
 .main-content {
-  padding: 2.4rem 0 3rem;
+  padding: 1.5rem 0 3rem;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;

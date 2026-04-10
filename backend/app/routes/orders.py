@@ -5,16 +5,17 @@ from app.services.db import supabase
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 @router.get("/")
-def get_orders(limit: int = 100, status: Optional[str] = None) -> List[Dict[str, Any]]:
+def get_orders(limit: int = 15, offset: int = 0, status: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Returns a list of orders.
-    Can filter by status.
+    Can filter by status and supports pagination via limit/offset.
     """
     try:
         params = {
             "select": "*",
             "order": "created_at.desc",
-            "limit": limit
+            "limit": limit,
+            "offset": offset
         }
         if status:
             params["status"] = f"eq.{status}"
