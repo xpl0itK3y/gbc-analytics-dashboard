@@ -53,17 +53,19 @@
 
       <DashboardInsights :stats="stats" />
 
-      <div class="grid-layout">
+      <!-- Charts Section -->
+      <section v-if="stats" class="charts-section">
         <div class="chart-section">
           <OrdersChart :stats="stats" />
         </div>
-      </div>
-        <OrdersTable 
-          :orders="orders" 
-          :totalOrders="totalOrders"
-          :isLoadingMore="isLoadingMore"
-          @load-more="loadMoreOrders"
-        />
+      </section>
+
+      <OrdersTable 
+        :orders="orders" 
+        :totalOrders="totalOrders"
+        :isLoadingMore="isLoadingMore"
+        @load-more="loadMoreOrders"
+      />
     </main>
   </div>
 </template>
@@ -177,16 +179,20 @@ async function loadMoreOrders() {
   }
 }
 
-onMounted(async () => {
-  await refreshDashboard()
-  refreshTimer = window.setInterval(() => {
-    refreshDashboard({ silent: true })
-  }, REFRESH_INTERVAL_MS)
+const handleScroll = () => {
+  scrollY.value = window.scrollY
+}
 
-  // Top tracking
-  window.addEventListener('scroll', () => {
-    scrollY.value = window.scrollY
-  }, { passive: true })
+onMounted(() => {
+  refreshDashboard()
+  
+  // Set up silent auto-refresh every 60 seconds
+  refreshTimer = setInterval(() => {
+    refreshDashboard(true)
+  }, 5000)
+
+  // Header scroll logic
+  window.addEventListener('scroll', handleScroll)
 
   observer = new IntersectionObserver(
     ([entry]) => {

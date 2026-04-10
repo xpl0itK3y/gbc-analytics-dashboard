@@ -27,7 +27,6 @@ def get_stats() -> Dict[str, Any]:
     revenue_per_day = defaultdict(float)
     status_counts = defaultdict(int)
     city_counts = defaultdict(int)
-    source_counts = defaultdict(int)
 
     for order in orders:
         # Timeline stats
@@ -43,9 +42,6 @@ def get_stats() -> Dict[str, Any]:
         
         ct = order.get("city") or "Не указан"
         city_counts[ct] += 1
-        
-        src = order.get("utm_source") or "Без метки"
-        source_counts[src] += 1
 
     # Format timeline data
     chart_data = [{"date": d, "count": c} for d, c in sorted(orders_per_day.items())]
@@ -54,7 +50,6 @@ def get_stats() -> Dict[str, Any]:
     # Format insights data (Top 5 for efficiency)
     top_statuses = [{"name": k, "count": v} for k, v in sorted(status_counts.items(), key=lambda x: x[1], reverse=True)]
     top_cities = [{"name": k, "count": v} for k, v in sorted(city_counts.items(), key=lambda x: x[1], reverse=True)]
-    top_sources = [{"name": k, "count": v} for k, v in sorted(source_counts.items(), key=lambda x: x[1], reverse=True)]
 
     return {
         "summary": {
@@ -65,7 +60,6 @@ def get_stats() -> Dict[str, Any]:
         "revenue_per_day": revenue_chart_data,
         "insights": {
             "statuses": top_statuses,
-            "cities": top_cities,
-            "sources": top_sources
+            "cities": top_cities
         }
     }

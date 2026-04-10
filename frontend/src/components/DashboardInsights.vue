@@ -1,5 +1,6 @@
 <template>
   <section class="insights-grid">
+    <!-- Cities Insight -->
     <div class="card insight-card accent-cyan">
       <div class="card-header insight-header">
         <div>
@@ -22,6 +23,7 @@
       </div>
     </div>
 
+    <!-- Statuses Insight -->
     <div class="card insight-card accent-sand">
       <div class="card-header insight-header">
         <div>
@@ -38,30 +40,6 @@
           </div>
         </div>
         <p v-else class="empty-copy">Статусы пока не рассчитаны.</p>
-      </div>
-    </div>
-
-    <div class="card insight-card accent-rose">
-      <div class="card-header insight-header">
-        <div>
-          <p class="section-kicker">Маркетинг</p>
-          <h2>Откуда пришли клиенты</h2>
-        </div>
-        <span class="section-note">UTM</span>
-      </div>
-      <div class="insight-content">
-        <div v-if="topSources.length" class="source-list">
-          <div v-for="source in topSources" :key="source.name" class="source-row">
-            <div class="source-meta">
-              <strong>{{ source.name }}</strong>
-              <span>{{ source.orders }} заказов</span>
-            </div>
-            <div class="source-bar">
-              <div class="source-fill" :style="{ width: source.width }"></div>
-            </div>
-          </div>
-        </div>
-        <p v-else class="empty-copy">UTM-источники пока не заполнены.</p>
       </div>
     </div>
   </section>
@@ -95,16 +73,6 @@ const topStatuses = computed(() => {
   }))
 })
 
-const topSources = computed(() => {
-  const data = props.stats?.insights?.sources || []
-  const max = Math.max(...data.map(i => i.count), 1)
-  return data.slice(0, 4).map(item => ({
-    name: item.name,
-    orders: item.count,
-    width: `${Math.max((item.count / max) * 100, 16)}%`
-  }))
-})
-
 const STATUS_LABELS = {
   'new': 'Новый',
   'offer-analog': 'Предложить аналог',
@@ -128,8 +96,9 @@ function formatStatus(value) {
 <style scoped>
 .insights-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem;
+  margin-bottom: 2rem;
 }
 
 .insight-card {
@@ -149,10 +118,6 @@ function formatStatus(value) {
 
 .accent-sand::before {
   background: linear-gradient(90deg, #f59e0b, #fbbf24);
-}
-
-.accent-rose::before {
-  background: linear-gradient(90deg, #ef4444, #fb7185);
 }
 
 .insight-header {
@@ -184,29 +149,25 @@ function formatStatus(value) {
   padding: 1.25rem 1.8rem 1.7rem;
 }
 
-.rank-list,
-.source-list {
+.rank-list {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
 }
 
-.rank-item,
-.source-row {
+.rank-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
 }
 
-.rank-item strong,
-.source-meta strong {
+.rank-item strong {
   display: block;
   margin-bottom: 0.2rem;
 }
 
-.rank-item span,
-.source-meta span {
+.rank-item span {
   font-size: 0.92rem;
   color: var(--text-muted);
 }
@@ -239,25 +200,6 @@ function formatStatus(value) {
 .status-tile strong {
   font-size: 1.5rem;
   color: #78350f;
-}
-
-.source-row {
-  align-items: flex-start;
-  flex-direction: column;
-}
-
-.source-bar {
-  width: 100%;
-  height: 12px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #ffe4e6;
-}
-
-.source-fill {
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #ef4444, #fb7185);
 }
 
 .empty-copy {
