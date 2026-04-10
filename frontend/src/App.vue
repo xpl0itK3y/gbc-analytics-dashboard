@@ -51,20 +51,19 @@
         </div>
       </section>
 
-      <DashboardInsights :orders="orders" />
+      <DashboardInsights :stats="stats" />
 
       <div class="grid-layout">
         <div class="chart-section">
           <OrdersChart :stats="stats" />
         </div>
       </div>
-      <div class="table-section">
         <OrdersTable 
           :orders="orders" 
+          :totalOrders="totalOrders"
           :isLoadingMore="isLoadingMore"
           @load-more="loadMoreOrders"
         />
-      </div>
     </main>
   </div>
 </template>
@@ -80,6 +79,7 @@ const REFRESH_INTERVAL_MS = 15000
 
 const stats = ref(null)
 const orders = ref([])
+const totalOrders = ref(0)
 const summary = ref(null)
 const lastUpdatedAt = ref(null)
 const isRefreshing = ref(false)
@@ -143,14 +143,15 @@ async function refreshDashboard({ silent = false } = {}) {
 
   try {
     const currentLimit = orders.value.length || 15
-    const [statsData, ordersData] = await Promise.all([
+    const [statsData, ordersResponse] = await Promise.all([
       fetchStats(),
       fetchOrders(currentLimit, 0)
     ])
 
     stats.value = statsData
     summary.value = statsData.summary
-    orders.value = ordersData
+    orders.value = ordersResponse.orders
+    totalOrders.value = ordersResponse.total
     lastUpdatedAt.value = new Date()
   } catch (e) {
     console.error('Dashboard refresh error:', e)
@@ -164,9 +165,10 @@ async function loadMoreOrders() {
   isLoadingMore.value = true
   
   try {
-    const nextOrders = await fetchOrders(15, orders.value.length)
-    if (nextOrders.length > 0) {
-      orders.value = [...orders.value, ...nextOrders]
+    const ordersResponse = await fetchOrders(15, orders.value.length)
+    if (ordersResponse.orders.length > 0) {
+      orders.value = [...orders.value, ...ordersResponse.orders]
+      totalOrders.value = ordersResponse.total
     }
   } catch (e) {
     console.error('Failed to load more orders:', e)

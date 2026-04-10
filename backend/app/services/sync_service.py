@@ -1,6 +1,7 @@
 import logging
 import httpx
 import hashlib
+import time
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 from app.utils.config import settings
@@ -13,32 +14,52 @@ class OrderSyncService:
         self.retailcrm_url = settings.RETAILCRM_BASE_URL
         self.retailcrm_key = settings.RETAILCRM_API_KEY
 
-    def fetch_recent_orders(self, limit: int = 50) -> List[Dict[str, Any]]:
+    def fetch_all_orders(self, limit: int = 100, max_pages: int = 50) -> List[Dict[str, Any]]:
         """
-        Fetch recent orders from RetailCRM API v5.
+        Fetch all orders from RetailCRM using pagination.
+        - limit: items per page (max 100)
+        - max_pages: safety cap to prevent infinite loops or excessive API calls
         """
+        all_orders = []
+        current_page = 1
+        
         try:
             with httpx.Client() as client:
-                response = client.get(
-                    f"{self.retailcrm_url}/orders",
-                    params={
-                        "apiKey": self.retailcrm_key,
-                        "limit": limit
-                    },
-                    timeout=10.0
-                )
-                response.raise_for_status()
-                data = response.json()
-                if not data.get("success"):
-                    logger.error(f"RetailCRM API error: {data.get('errorMsg')}")
-                    return []
-                return data.get("orders", [])
-        except httpx.HTTPError as exc:
-            logger.error(f"HTTP error occurred while fetching from RetailCRM: {exc}")
-            return []
+                while current_page <= max_pages:
+                    logger.info(f"Fetching RetailCRM orders: page {current_page}...")
+                    response = client.get(
+                        f"{self.retailcrm_url}/orders",
+                        params={
+                            "apiKey": self.retailcrm_key,
+                            "limit": limit,
+                            "page": current_page
+                        },
+                        timeout=15.0
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    
+                    if not data.get("success"):
+                        logger.error(f"RetailCRM API error: {data.get('errorMsg')}")
+                        break
+                        
+                    orders = data.get("orders", [])
+                    all_orders.extend(orders)
+                    
+                    pagination = data.get("pagination", {})
+                    total_pages = pagination.get("totalPageCount", 1)
+                    
+                    if current_page >= total_pages:
+                        break
+                    
+                    current_page += 1
+                    # Small delay to be polite to the API
+                    time.sleep(0.1)
+                    
+                return all_orders
         except Exception as exc:
-            logger.error(f"Unexpected error while fetching from RetailCRM: {exc}")
-            return []
+            logger.error(f"Error during paginated fetch: {exc}")
+            return all_orders
 
     def transform_order_for_supabase(
         self,
@@ -145,20 +166,35 @@ class OrderSyncService:
             logger.error(f"Error upserting to Supabase: {exc}")
             return 0
 
-    def sync_orders(self) -> int:
+    def sync_orders(self, batch_size: int = 500) -> int:
         """
-        Orchestration method: Fetch -> Transform -> Push
+        Orchestration method: Fetch all -> Transform -> Push in batches
         """
-        logger.info("Starting order sync from RetailCRM to Supabase...")
-        crm_orders = self.fetch_recent_orders()
+        logger.info("Starting paginated order sync from RetailCRM...")
+        crm_orders = self.fetch_all_orders()
+        
         if not crm_orders:
-            logger.info("No orders received from RetailCRM during sync.")
+            logger.info("No orders received from RetailCRM.")
             return 0
         
+        total_count = len(crm_orders)
+        logger.info(f"Retrieved {total_count} total orders. Processing in batches of {batch_size}...")
+        
+        # Build timeline for all retrieved orders
         demo_timeline = self.build_demo_timeline(crm_orders)
-        transformed = [
-            self.transform_order_for_supabase(order, created_at_override=demo_timeline[index])
-            for index, order in enumerate(crm_orders)
-        ]
-        upserted_count = self.push_to_supabase(transformed)
-        return upserted_count
+        
+        upserted_total = 0
+        for i in range(0, total_count, batch_size):
+            batch_crm = crm_orders[i : i + batch_size]
+            batch_timeline = demo_timeline[i : i + batch_size]
+            
+            transformed_batch = [
+                self.transform_order_for_supabase(order, created_at_override=batch_timeline[index])
+                for index, order in enumerate(batch_crm)
+            ]
+            
+            pushed_count = self.push_to_supabase(transformed_batch)
+            upserted_total += pushed_count
+            logger.info(f"Synced batch {i // batch_size + 1}: {pushed_count} orders upserted.")
+
+        return upserted_total

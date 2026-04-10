@@ -11,11 +11,26 @@ class SupabaseRESTClient:
         }
         
     def get(self, table: str, params: dict = None):
+        headers = self.headers.copy()
+        headers["Prefer"] = "count=exact"
         with httpx.Client() as client:
-            res = client.get(f"{self.url}/{table}", headers=self.headers, params=params)
+            res = client.get(f"{self.url}/{table}", headers=headers, params=params)
             if res.status_code >= 400:
                 raise Exception(f"Failed to fetch {table}: {res.text}")
-            return res.json()
+            
+            # Content-Range example: "0-14/156"
+            content_range = res.headers.get("Content-Range")
+            total = 0
+            if content_range and "/" in content_range:
+                try:
+                    total = int(content_range.split("/")[-1])
+                except (ValueError, IndexError):
+                    total = 0
+                    
+            return {
+                "data": res.json(),
+                "total": total
+            }
             
     def upsert(self, table: str, data: list):
         headers = self.headers.copy()

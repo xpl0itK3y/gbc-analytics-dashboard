@@ -71,71 +71,57 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  orders: {
-    type: Array,
-    default: () => []
+  stats: {
+    type: Object,
+    default: null
   }
 })
 
 const topCities = computed(() => {
-  const total = props.orders.length || 1
-  const grouped = props.orders.reduce((acc, order) => {
-    const key = order.city || 'Не указан'
-    acc[key] = (acc[key] || 0) + 1
-    return acc
-  }, {})
-
-  return Object.entries(grouped)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 4)
-    .map(([name, count]) => ({
-      name,
-      count,
-      share: `${Math.round((count / total) * 100)}% от списка`
-    }))
+  const data = props.stats?.insights?.cities || []
+  const total = props.stats?.summary?.total_orders || 1
+  return data.slice(0, 4).map(item => ({
+    name: item.name,
+    count: item.count,
+    share: `${Math.round((item.count / total) * 100)}% от всех`
+  }))
 })
 
 const topStatuses = computed(() => {
-  const grouped = props.orders.reduce((acc, order) => {
-    const key = formatStatus(order.status)
-    acc[key] = (acc[key] || 0) + 1
-    return acc
-  }, {})
-
-  return Object.entries(grouped)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 4)
-    .map(([name, count]) => ({ name, count }))
+  const data = props.stats?.insights?.statuses || []
+  return data.slice(0, 4).map(item => ({
+    name: formatStatus(item.name),
+    count: item.count
+  }))
 })
 
 const topSources = computed(() => {
-  const grouped = props.orders.reduce((acc, order) => {
-    const key = order.utm_source || 'Без метки'
-    acc[key] = (acc[key] || 0) + 1
-    return acc
-  }, {})
-
-  const max = Math.max(...Object.values(grouped), 1)
-
-  return Object.entries(grouped)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 4)
-    .map(([name, orders]) => ({
-      name,
-      orders,
-      width: `${Math.max((orders / max) * 100, 16)}%`
-    }))
+  const data = props.stats?.insights?.sources || []
+  const max = Math.max(...data.map(i => i.count), 1)
+  return data.slice(0, 4).map(item => ({
+    name: item.name,
+    orders: item.count,
+    width: `${Math.max((item.count / max) * 100, 16)}%`
+  }))
 })
 
-function formatStatus(value) {
-  if (!value) {
-    return 'Без статуса'
-  }
+const STATUS_LABELS = {
+  'new': 'Новый',
+  'offer-analog': 'Предложить аналог',
+  'prepay-await': 'Ожидает предоплату',
+  'prepay-success': 'Предоплата получена',
+  'send-to-delivery': 'Передан в доставку',
+  'delivering': 'Доставляется',
+  'complete': 'Выполнен',
+  'cancelled': 'Отменен',
+  'return': 'Возврат'
+}
 
-  return value
-    .split('-')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
+function formatStatus(value) {
+  if (!value) return 'Без статуса'
+  const techValue = value.toLowerCase()
+  if (STATUS_LABELS[techValue]) return STATUS_LABELS[techValue]
+  return value.split('-').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')
 }
 </script>
 

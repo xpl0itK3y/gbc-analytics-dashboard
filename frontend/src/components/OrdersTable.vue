@@ -24,7 +24,7 @@
             <td class="font-medium">{{ order.total.toLocaleString() }} ₸</td>
             <td>
               <span class="badge" :class="order.status.toLowerCase()">
-                {{ order.status }}
+                {{ formatStatus(order.status) }}
               </span>
             </td>
           </tr>
@@ -34,30 +34,47 @@
         <p>Заказы пока не загружены. Дождитесь синхронизации.</p>
       </div>
 
-      <div class="table-footer" v-if="orders.length">
+      <div class="load-more-container" v-if="orders.length > 0">
         <button 
-          class="load-more-btn" 
-          @click="$emit('load-more')"
-          :disabled="isLoadingMore"
+          class="btn-load-more" 
+          @click="$emit('load-more')" 
+          :disabled="isLoadingMore || !hasMore"
+          :class="{ 'btn-complete': !hasMore }"
         >
           <span v-if="isLoadingMore" class="spinner"></span>
-          {{ isLoadingMore ? 'Загрузка...' : 'Показать больше' }}
+          <span>{{ buttonText }}</span>
         </button>
+        <div v-if="!hasMore" class="pagination-info">
+          Показано {{ orders.length }} из {{ totalOrders }} заказов. Все данные загружены.
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   orders: {
     type: Array,
-    default: () => []
+    required: true
+  },
+  totalOrders: {
+    type: Number,
+    default: 0
   },
   isLoadingMore: {
     type: Boolean,
     default: false
   }
+})
+
+const hasMore = computed(() => props.orders.length < props.totalOrders)
+
+const buttonText = computed(() => {
+  if (props.isLoadingMore) return 'Загрузка...'
+  return hasMore.value ? 'Показать больше' : 'Все заказы загружены'
 })
 
 defineEmits(['load-more'])
@@ -66,6 +83,24 @@ function formatDate(dateStr) {
   if (!dateStr) return '—';
   const d = new Date(dateStr)
   return `${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
+}
+
+const STATUS_LABELS = {
+  'new': 'Новый',
+  'offer-analog': 'Предложить аналог',
+  'prepay-await': 'Ожидает предоплату',
+  'prepay-success': 'Предоплата получена',
+  'send-to-delivery': 'Передан в доставку',
+  'delivering': 'Доставляется',
+  'complete': 'Выполнен',
+  'cancelled': 'Отменен',
+  'return': 'Возврат'
+}
+
+function formatStatus(value) {
+  if (!value) return '—'
+  const techValue = value.toLowerCase()
+  return STATUS_LABELS[techValue] || value
 }
 </script>
 
@@ -106,14 +141,15 @@ tbody tr:hover {
   text-align: center;
   color: var(--text-muted);
 }
-.table-footer {
+.load-more-container {
   padding: 1.5rem;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   border-top: 1px solid var(--border-color);
   background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
 }
-.load-more-btn {
+.btn-load-more {
   padding: 0.75rem 1.5rem;
   font-family: inherit;
   font-size: 0.95rem;
@@ -129,18 +165,31 @@ tbody tr:hover {
   gap: 0.6rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
-.load-more-btn:hover:not(:disabled) {
+.btn-load-more:hover:not(:disabled) {
   background-color: #f0fdfa;
   border-color: #0f766e;
   transform: translateY(-1px);
   box-shadow: 0 4px 6px rgba(15, 118, 110, 0.08);
 }
-.load-more-btn:active:not(:disabled) {
+.btn-load-more:active:not(:disabled) {
   transform: translateY(0);
 }
-.load-more-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.btn-load-more.btn-complete {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+  cursor: default;
+}
+.btn-load-more.btn-complete:hover {
+  background: #f1f5f9;
+  transform: none;
+  box-shadow: none;
+}
+.pagination-info {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 .spinner {
   width: 1rem;

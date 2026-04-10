@@ -17,7 +17,7 @@ logging.basicConfig(
 logger = logging.getLogger("retailcrm_bot")
 
 STATE_FILE = Path(__file__).resolve().parent / "data" / "bot_state.json"
-POLL_INTERVAL = 60  # seconds between RetailCRM checks
+POLL_INTERVAL = 10  # seconds between RetailCRM checks (reduced for faster response)
 THRESHOLD_TOTAL = 50000
 
 def get_last_processed_id() -> int:
