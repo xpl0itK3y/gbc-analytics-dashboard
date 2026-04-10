@@ -1,5 +1,7 @@
 import logging
 import httpx
+import hashlib
+from datetime import datetime, timedelta
 from typing import List, Dict, Any
 from app.utils.config import settings
 from app.services.db import supabase
@@ -38,7 +40,11 @@ class OrderSyncService:
             logger.error(f"Unexpected error while fetching from RetailCRM: {exc}")
             return []
 
-    def transform_order_for_supabase(self, crm_order: Dict[str, Any]) -> Dict[str, Any]:
+    def transform_order_for_supabase(
+        self,
+        crm_order: Dict[str, Any],
+        created_at_override: str | None = None
+    ) -> Dict[str, Any]:
         """
         Transform a RetailCRM order dictionary into the Supabase 'orders' table schema.
         Expected schema: id, number, first_name, last_name, phone, status, total, city, utm_source, created_at
@@ -66,8 +72,51 @@ class OrderSyncService:
             "total": float(total) if total is not None else 0.0,
             "city": address.get("city", ""),
             "utm_source": custom_fields.get("utm_source", ""),
-            "created_at": crm_order.get("createdAt")
+            "created_at": created_at_override or crm_order.get("createdAt")
         }
+
+    def build_demo_timeline(self, crm_orders: List[Dict[str, Any]]) -> List[str | None]:
+        """
+        Spread orders across several recent days when the source data is clustered
+        into a single date. This makes demo dashboards easier to read while keeping
+        the behaviour deterministic for the same order list.
+        """
+        source_dates = {
+            (order.get("createdAt") or "")[:10]
+            for order in crm_orders
+            if order.get("createdAt")
+        }
+
+        if len(source_dates) > 1:
+            return [order.get("createdAt") for order in crm_orders]
+
+        total_orders = len(crm_orders)
+        if total_orders == 0:
+            return []
+
+        start_date = datetime.utcnow().replace(hour=9, minute=0, second=0, microsecond=0) - timedelta(days=9)
+        weighted_day_offsets = [0, 0, 1, 1, 1, 2, 3, 3, 4, 5, 5, 6, 7, 8, 8, 9]
+        generated_dates: List[str] = []
+
+        for index, order in enumerate(crm_orders):
+            order_seed = str(order.get("id") or order.get("number") or index)
+            digest = hashlib.sha256(order_seed.encode("utf-8")).hexdigest()
+            numeric_seed = int(digest[:8], 16)
+
+            day_offset = weighted_day_offsets[numeric_seed % len(weighted_day_offsets)]
+            hour_offset = 1 + (numeric_seed % 11)
+            minute_offset = (numeric_seed // 11) % 60
+            synthetic_dt = start_date + timedelta(
+                days=day_offset,
+                hours=hour_offset,
+                minutes=minute_offset,
+            )
+
+            # Stable extra shift keeps the pattern uneven without changing across syncs.
+            synthetic_dt += timedelta(minutes=(numeric_seed // 97) % 37)
+            generated_dates.append(synthetic_dt.replace(microsecond=0).isoformat())
+
+        return generated_dates
 
     def push_to_supabase(self, transformed_orders: List[Dict[str, Any]]) -> int:
         """
@@ -106,6 +155,10 @@ class OrderSyncService:
             logger.info("No orders received from RetailCRM during sync.")
             return 0
         
-        transformed = [self.transform_order_for_supabase(order) for order in crm_orders]
+        demo_timeline = self.build_demo_timeline(crm_orders)
+        transformed = [
+            self.transform_order_for_supabase(order, created_at_override=demo_timeline[index])
+            for index, order in enumerate(crm_orders)
+        ]
         upserted_count = self.push_to_supabase(transformed)
         return upserted_count

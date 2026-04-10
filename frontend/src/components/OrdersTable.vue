@@ -1,18 +1,18 @@
 <template>
   <div class="card">
     <div class="card-header">
-      <h2>Recent Orders</h2>
+      <h2>Последние заказы</h2>
     </div>
     <div class="table-responsive">
       <table v-if="orders.length">
         <thead>
           <tr>
-            <th>Order Number</th>
-            <th>M/D</th>
-            <th>Customer</th>
-            <th>City</th>
-            <th>Total Sum</th>
-            <th>Status</th>
+            <th>Номер</th>
+            <th>Дата</th>
+            <th>Клиент</th>
+            <th>Город</th>
+            <th>Сумма</th>
+            <th>Статус</th>
           </tr>
         </thead>
         <tbody>
@@ -31,23 +31,17 @@
         </tbody>
       </table>
       <div v-else class="empty-state">
-        <p>No orders currently available. Wait for a sync!</p>
+        <p>Заказы пока не загружены. Дождитесь синхронизации.</p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { fetchOrders } from '../services/api'
-
-const orders = ref([])
-
-onMounted(async () => {
-  try {
-    orders.value = await fetchOrders(15) // fetch 15 most recent
-  } catch(e) {
-    console.error("Orders load error:", e)
+defineProps({
+  orders: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -68,15 +62,18 @@ table {
   text-align: left;
 }
 th, td {
-  padding: 1rem 1.2rem;
+  padding: 1.15rem 1.45rem;
   border-bottom: 1px solid var(--border-color);
 }
 th {
   font-weight: 500;
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 0.92rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+td {
+  font-size: 1rem;
 }
 tbody tr:last-child td {
   border-bottom: none;
@@ -88,7 +85,7 @@ tbody tr:hover {
   background-color: var(--hover-bg);
 }
 .empty-state {
-  padding: 2rem;
+  padding: 2.5rem;
   text-align: center;
   color: var(--text-muted);
 }
